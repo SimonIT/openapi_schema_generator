@@ -1,6 +1,7 @@
 import json
 
 import requests
+import validators
 
 schemas = {}
 
@@ -40,6 +41,22 @@ def schema_from_json(json_data, key="response"):
             "type": "boolean"
         }
     elif type(json_data) is str:
+        string_format = None
+        if validators.email(json_data):
+            string_format = "email"
+        elif validators.uuid(json_data):
+            string_format = "uuid"
+        elif validators.url(json_data):
+            string_format = "uri"
+        elif validators.ipv4(json_data):
+            string_format = "ipv4"
+        elif validators.ipv6(json_data):
+            string_format = "ipv6"
+        if string_format is not None:
+            return {
+                "type": "string",
+                "format": string_format
+            }
         return {
             "type": "string"
         }
