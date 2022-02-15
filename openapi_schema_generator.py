@@ -18,14 +18,12 @@ def schema_from_json(json_data, key="response"):
             "$ref": f"#/components/schemas/{key}"
         }
     elif type(json_data) is list:
-        if len(json_data) == 0:
-            return {
-                "type": "array",
-                "items": {}
-            }
+        items = {}
+        for item in json_data:
+            items = {**items, **schema_from_json(item, key=key)}
         return {
             "type": "array",
-            "items": schema_from_json(json_data[0], key=key)
+            "items": items
         }
     elif type(json_data) is int:
         return {
