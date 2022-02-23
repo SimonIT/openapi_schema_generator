@@ -11,6 +11,30 @@ schemas = {}
 key_count = {}
 
 
+def merge_schemas(schema1: dict, schema2: dict) -> dict:
+    for data_property in schema1["properties"]:
+        p1 = schema1["properties"][data_property]
+        p2 = schema2["properties"][data_property]
+        if p2.get("type") == "array":
+            p2["items"] = {**p1["items"], **p2["items"]}
+        schema1["properties"][data_property] = {**p1, **p2}
+    return schema1
+
+
+def are_schemas_equal(schema1: dict, schema2: dict) -> bool:
+    if not schema1["properties"].keys() == schema2["properties"].keys():
+        return False
+    for schema_property in schema1["properties"]:
+        p1 = schema1["properties"][schema_property]
+        p2 = schema2["properties"][schema_property]
+        if p1.get("$ref") != p2.get("$ref"):
+            return False
+        if p1.get("type") == "array" and p1.get("items").get("$ref") != p2.get("items").get("$ref") and p1.get(
+                "items") and p2.get("items"):
+            return False
+    return True
+
+
 def schema_from_json(json_data, key="response"):
     if type(json_data) is dict:
         data = {
@@ -19,15 +43,17 @@ def schema_from_json(json_data, key="response"):
                 key: schema_from_json(json_data[key], key=key) for key in json_data
             }
         }
-        if key in schemas and schemas[key]["properties"] != data["properties"]:
+        if key in schemas and not are_schemas_equal(schemas[key], data):
             count = key_count.get(key, 0) + 1
             for i in range(1, count):
-                if schemas[key + str(i)]["properties"] == data["properties"]:
+                if are_schemas_equal(schemas[key + str(i)], data):
                     key += str(i)
                     break
             else:
                 key_count[key] = count
                 key += str(count)
+        if key in schemas:
+            data = merge_schemas(data, schemas[key])
         schemas[key] = data
         return {
             "$ref": f"#/components/schemas/{key}"
