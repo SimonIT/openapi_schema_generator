@@ -4,16 +4,22 @@ import requests
 import validators
 
 schemas = {}
+key_count = {}
 
 
 def schema_from_json(json_data, key="response"):
     if type(json_data) is dict:
-        schemas[key] = {
+        data = {
             "type": "object",
             "properties": {
                 key: schema_from_json(json_data[key], key=key) for key in json_data
             }
         }
+        if key in schemas and schemas[key]["properties"] != data["properties"]:
+            count = key_count.get(key, 0) + 1
+            key_count[key] = count
+            key += str(count)
+        schemas[key] = data
         return {
             "$ref": f"#/components/schemas/{key}"
         }
@@ -65,8 +71,13 @@ def schema_from_json(json_data, key="response"):
 
 
 if __name__ == "__main__":
-    request = requests.get(
-        "https://support.oneskyapp.com/hc/en-us/article_attachments/202761727/example_2.json")
+    request = requests.get("https://dash.readme.io/api/v1/api-registry/43z4en99mkzxz98el")
+    for path in json.loads(request.text)["paths"].values():
+        for request_type in path.values():
+            for response in request_type["responses"].values():
+                if "content" in response:
+                    json_response = response["content"]["application/json"]
+                    if "schemas" not in json_response and "examples" in json_response:
+                        schema_from_json(json_response["examples"]["response"]["value"], key=response["description"])
     with open("schema.json", "w") as schema_file:
-        schema_from_json(json.loads(request.text))
-        json.dump(schemas, schema_file, indent=4)
+        json.dump(schemas, schema_file, indent=2)
