@@ -1,8 +1,10 @@
 import json
+import re
 
 import requests
 import validators
 
+pattern = re.compile('[\W_]+')
 schemas = {}
 key_count = {}
 
@@ -17,8 +19,13 @@ def schema_from_json(json_data, key="response"):
         }
         if key in schemas and schemas[key]["properties"] != data["properties"]:
             count = key_count.get(key, 0) + 1
-            key_count[key] = count
-            key += str(count)
+            for i in range(1, count):
+                if schemas[key + str(i)]["properties"] == data["properties"]:
+                    key += str(i)
+                    break
+            else:
+                key_count[key] = count
+                key += str(count)
         schemas[key] = data
         return {
             "$ref": f"#/components/schemas/{key}"
@@ -70,14 +77,30 @@ def schema_from_json(json_data, key="response"):
         }
 
 
+def get_response_key(request_path: str, request_type: str) -> str:
+    if not request_path[0].isalnum():
+        request_path = request_path[1:]
+    return pattern.sub("_", request_path) + "_" + request_type + "_response"
+
+
+def schemas_from_oas_examples(spec: dict) -> dict:
+    global schemas
+    schemas = spec["components"].get("schemas", {})
+    paths = spec["paths"]
+    for path in paths:
+        for request_type in paths[path]:
+            for response in paths[path][request_type]["responses"]:
+                if "content" in paths[path][request_type]["responses"][response]:
+                    json_response = paths[path][request_type]["responses"][response]["content"]["application/json"]
+                    if "schema" not in json_response and "examples" in json_response:
+                        json_response["schema"] = schema_from_json(json_response["examples"]["response"]["value"],
+                                                                   key=get_response_key(path, request_type))
+    spec["components"]["schemas"] = schemas
+    return spec
+
+
 if __name__ == "__main__":
     request = requests.get("https://dash.readme.io/api/v1/api-registry/43z4en99mkzxz98el")
-    for path in json.loads(request.text)["paths"].values():
-        for request_type in path.values():
-            for response in request_type["responses"].values():
-                if "content" in response:
-                    json_response = response["content"]["application/json"]
-                    if "schemas" not in json_response and "examples" in json_response:
-                        schema_from_json(json_response["examples"]["response"]["value"], key=response["description"])
+    spec = json.loads(request.text)
     with open("schema.json", "w") as schema_file:
-        json.dump(schemas, schema_file, indent=2)
+        json.dump(schemas_from_oas_examples(spec), schema_file, indent=2)
