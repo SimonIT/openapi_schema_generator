@@ -3,7 +3,9 @@ import re
 
 import requests
 import validators
+from inflector import Inflector
 
+inflector = Inflector()
 pattern = re.compile('[\W_]+')
 schemas = {}
 key_count = {}
@@ -33,7 +35,7 @@ def schema_from_json(json_data, key="response"):
     elif type(json_data) is list:
         items = {}
         for item in json_data:
-            items = {**items, **schema_from_json(item, key=key)}
+            items = {**items, **schema_from_json(item, key=inflector.singularize(key))}
         return {
             "type": "array",
             "items": items
