@@ -7,6 +7,9 @@ from inflector import Inflector
 
 inflector = Inflector()
 pattern = re.compile('[\W_]+')
+date = re.compile('^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])$')
+date_time = re.compile(
+    '^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$')
 schemas = {}
 key_count = {}
 
@@ -91,6 +94,10 @@ def schema_from_json(json_data, key="response"):
             string_format = "ipv4"
         elif validators.ipv6(json_data):
             string_format = "ipv6"
+        elif date.match(json_data):
+            string_format = "date"
+        elif date_time.match(json_data):
+            string_format = "date-time"
         if string_format is not None:
             return {
                 "type": "string",
@@ -105,10 +112,10 @@ def schema_from_json(json_data, key="response"):
         }
 
 
-def get_response_key(request_path: str, request_type: str) -> str:
+def get_response_key(request_path: str, response: str, request_type: str) -> str:
     if not request_path[0].isalnum():
         request_path = request_path[1:]
-    return pattern.sub("_", request_path) + "_" + request_type + "_response"
+    return pattern.sub("_", request_path) + "_" + request_type + "_" + response + "_response"
 
 
 def schemas_from_oas_examples(spec: dict) -> dict:
@@ -122,7 +129,7 @@ def schemas_from_oas_examples(spec: dict) -> dict:
                     json_response = paths[path][request_type]["responses"][response]["content"]["application/json"]
                     if "schema" not in json_response and "examples" in json_response:
                         json_response["schema"] = schema_from_json(json_response["examples"]["response"]["value"],
-                                                                   key=get_response_key(path, request_type))
+                                                                   key=get_response_key(path, response, request_type))
     spec["components"]["schemas"] = schemas
     return spec
 
