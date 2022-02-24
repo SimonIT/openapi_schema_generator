@@ -122,7 +122,7 @@ def get_response_key(request_path: str, response: str, request_type: str) -> str
 
 def schemas_from_oas_examples(spec: dict) -> dict:
     global schemas
-    schemas = spec["components"].get("schemas", {})
+    schemas = spec.get("components", {}).get("schemas", {})
     paths = spec["paths"]
     for path in paths:
         for request_type in paths[path]:
@@ -132,6 +132,8 @@ def schemas_from_oas_examples(spec: dict) -> dict:
                     if "schema" not in json_response and "examples" in json_response:
                         json_response["schema"] = schema_from_json(json_response["examples"]["response"]["value"],
                                                                    key=get_response_key(path, response, request_type))
+    if not spec.get("components"):
+        spec["components"] = {}
     spec["components"]["schemas"] = schemas
     return spec
 
