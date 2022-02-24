@@ -129,8 +129,13 @@ def schemas_from_oas_examples(spec: dict) -> dict:
             for response in paths[path][request_type]["responses"]:
                 if "content" in paths[path][request_type]["responses"][response]:
                     json_response = paths[path][request_type]["responses"][response]["content"]["application/json"]
-                    if "schema" not in json_response and "examples" in json_response:
-                        json_response["schema"] = schema_from_json(json_response["examples"]["response"]["value"],
+                    if "schema" not in json_response:
+                        json_object = None
+                        if "examples" in json_response:
+                            json_object = json_response["examples"]["response"]["value"]
+                        else:
+                            pass  # TODO maybe send request to get a real response
+                        json_response["schema"] = schema_from_json(json_object,
                                                                    key=get_response_key(path, response, request_type))
     if not spec.get("components"):
         spec["components"] = {}
