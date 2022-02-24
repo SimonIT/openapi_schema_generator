@@ -16,24 +16,37 @@ key_count = {}
 
 
 def merge_schemas(schema1: dict, schema2: dict) -> dict:
-    for data_property in schema1["properties"]:
-        p1 = schema1["properties"][data_property]
-        p2 = schema2["properties"][data_property]
-        if p2.get("type") == "array":
-            p2["items"] = {**p1["items"], **p2["items"]}
-        schema1["properties"][data_property] = {**p1, **p2}
-    return schema1
+    keys1 = set(schema1["properties"].keys())
+    keys2 = set(schema2["properties"].keys())
+    if keys1.issubset(keys2):
+        schema = schema2
+        other_props = schema1["properties"]
+    else:
+        schema = schema1
+        other_props = schema2["properties"]
+    props = schema["properties"]
+    for data_property in props:
+        p1 = props.get(data_property, {})
+        p2 = other_props.get(data_property, {})
+        if props[data_property].get("type") == "array":
+            props[data_property]["items"] = {**p1.get("items"), **p2.get("items", {})}
+        props[data_property] = {**p1, **p2}
+        if data_property not in other_props:
+            props[data_property]["nullable"] = True
+    return schema
 
 
 def are_schemas_equal(schema1: dict, schema2: dict) -> bool:
-    if not schema1["properties"].keys() == schema2["properties"].keys():
+    keys1 = set(schema1["properties"].keys())
+    keys2 = set(schema2["properties"].keys())
+    if not (keys1.issubset(keys2) or keys2.issubset(keys1)):
         return False
     for schema_property in schema1["properties"]:
-        p1 = schema1["properties"][schema_property]
-        p2 = schema2["properties"][schema_property]
-        if p1.get("$ref") != p2.get("$ref"):
+        p1 = schema1["properties"].get(schema_property, {})
+        p2 = schema2["properties"].get(schema_property, {})
+        if p1 and p2 and p1.get("$ref") != p2.get("$ref"):
             return False
-        if p1.get("type") == "array" and p1.get("items").get("$ref") != p2.get("items").get("$ref") and p1.get(
+        if p1.get("type") == "array" and p1.get("items").get("$ref") != p2.get("items", {}).get("$ref") and p1.get(
                 "items") and p2.get("items"):
             return False
     return True
