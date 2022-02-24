@@ -147,4 +147,4 @@ if __name__ == "__main__":
     request = requests.get("https://dash.readme.io/api/v1/api-registry/43z4en99mkzxz98el")
     spec = json.loads(request.text)
     with open("schema.json", "w") as schema_file:
-        json.dump(schemas_from_oas_examples(spec), schema_file, indent=2)
+        json.dump(schemas_from_oas_examples(spec), schema_file, indent=2, sort_keys=True)
