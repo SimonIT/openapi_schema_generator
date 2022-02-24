@@ -6,7 +6,8 @@ import validators
 from inflector import Inflector
 
 inflector = Inflector()
-pattern = re.compile('[\W_]+')
+special_chars = re.compile('[\W_]+')
+multiple_underscore = re.compile('_+')
 date = re.compile('^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])$')
 date_time = re.compile(
     '^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$')
@@ -115,7 +116,8 @@ def schema_from_json(json_data, key="response"):
 def get_response_key(request_path: str, response: str, request_type: str) -> str:
     if not request_path[0].isalnum():
         request_path = request_path[1:]
-    return pattern.sub("_", request_path) + "_" + request_type + "_" + response + "_response"
+    key = special_chars.sub("_", request_path) + "_" + request_type + "_" + response + "_response"
+    return multiple_underscore.sub("_", key)
 
 
 def schemas_from_oas_examples(spec: dict) -> dict:
