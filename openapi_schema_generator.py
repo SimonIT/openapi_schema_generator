@@ -4,13 +4,11 @@ import re
 import requests
 import validators
 from inflector import Inflector
+from dateutil.parser import *
 
 inflector = Inflector()
 special_chars = re.compile('[\W_]+')
 multiple_underscore = re.compile('_+')
-date = re.compile('^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])$')
-date_time = re.compile(
-    '^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$')
 schemas = {}
 key_count = {}
 
@@ -50,6 +48,20 @@ def are_schemas_equal(schema1: dict, schema2: dict) -> bool:
                 "items") and p2.get("items"):
             return False
     return True
+
+
+def is_date(text: str) -> bool:
+    try:
+        return isoparser('T').parse_isodate(text) is not None
+    except ValueError:
+        return False
+
+
+def is_date_time(text: str) -> bool:
+    try:
+        return isoparser('T').isoparse(text) is not None
+    except ValueError:
+        return False
 
 
 def schema_from_json(json_data, key="response"):
@@ -108,9 +120,9 @@ def schema_from_json(json_data, key="response"):
             string_format = "ipv4"
         elif validators.ipv6(json_data):
             string_format = "ipv6"
-        elif date.match(json_data):
+        elif is_date(json_data):
             string_format = "date"
-        elif date_time.match(json_data):
+        elif is_date_time(json_data):
             string_format = "date-time"
         if string_format is not None:
             return {
